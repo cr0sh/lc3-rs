@@ -88,11 +88,10 @@ impl VM {
     /// Loads a program from given path of file.
     /// # Panics
     /// This function panics if file contents' length is not even or less than two(invalid header).
-    pub fn load_file(&mut self, path: &std::path::Path) -> std::io::Result<VM> {
+    pub fn load_file(&mut self, path: &std::path::Path) -> std::io::Result<()> {
         let program = std::fs::read(path)?;
-        let mut vm = VM::new();
-        vm.load_u8(&program);
-        Ok(vm)
+        self.load_u8(&program);
+        Ok(())
     }
 
     /// Loads a program from u16 slice from entry point given, and set pc to it.
