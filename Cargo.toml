@@ -1,0 +1,32 @@
+[package]
+name = "lc3-rs"
+version = "0.1.0"
+authors = ["cr0sh <ska827@naver.com>"]
+edition = "2018"
+
+[features]
+register-trace = []
+instruction-trace = []
+disable-crlf-compat-windows = []
+
+[dependencies]
+rust-embed = "4.3"
+
+[lib]
+name = "lc3"
+path = "src/lib.rs"
+test = true
+doctest = true
+bench = true
+doc = true
+plugin = false
+proc-macro = false
+harness = true
+
+[[bin]]
+name = "test-proj1"
+path = "src/bin/test_proj1/main.rs"
+
+[[bin]]
+name = "calc"
+path = "src/bin/calc/main.rs"
