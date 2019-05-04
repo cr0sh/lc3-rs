@@ -16,9 +16,7 @@ const DEFAULT_MEM: [u16; 1 << 16] = {
     mem
 };
 
-#[derive(RustEmbed)]
-#[folder = "static/"]
-struct Asset;
+const OPERATING_SYSTEM: &'static [u8] = include_bytes!("../../static/lc3os.obj");
 
 /// A helper struct to handle windows CRLF newline incompatiability
 struct CRLFtoLF<T: Read> {
@@ -67,7 +65,7 @@ impl VM {
             pc: 0x3000,
             ..Default::default()
         };
-        vm.load_u8(Asset::get("lc3os.obj").unwrap().as_ref());
+        vm.load_u8(OPERATING_SYSTEM);
         vm
     }
 
@@ -514,14 +512,10 @@ fn test_run() {
 mod tests {
     use super::*;
 
-    #[derive(RustEmbed)]
-    #[folder = "static/"]
-    struct Asset;
-
     #[test]
     fn test_load() {
         VM::new();
-        VM::default().load_u8(Asset::get("lc3os.obj").unwrap().as_ref());
+        VM::default().load_u8(OPERATING_SYSTEM);
         VM::default().load_u8(&[0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF]);
         VM::default().load_u16(0x3000, &[0, 0, 0, 0]);
     }
@@ -529,7 +523,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_load_panic() {
-        VM::default().load_u8(Asset::get("lc3os.obj").unwrap().as_ref()[1..].as_ref());
+        VM::default().load_u8(OPERATING_SYSTEM[1..].as_ref());
         VM::default().load_u8(&[0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF]);
         VM::default().load_u8(&[0xFF, 0xFF, 0xFF, 0xFE, 0xFF]);
         VM::default().load_u16(0xFFFF, &[0, 0, 0, 0]);

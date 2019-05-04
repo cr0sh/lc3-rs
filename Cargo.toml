@@ -15,9 +15,6 @@ register-trace = []
 instruction-trace = []
 disable-crlf-compat-windows = []
 
-[dependencies]
-rust-embed = "4.3"
-
 [lib]
 name = "lc3"
 path = "src/lib.rs"
