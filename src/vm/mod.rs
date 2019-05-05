@@ -1,6 +1,7 @@
-mod instruction;
 use crate::vm::instruction::{Condition, Instruction};
 use std::io::{Read, Result as IOResult, Write};
+
+pub mod instruction;
 
 // These should be u16 in sense, but we define as usize for convenience.
 pub const KBSR: usize = 0xFE00;
