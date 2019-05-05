@@ -330,58 +330,14 @@ impl VM {
         steps
     }
 
-    /// Executes as much as instructions, while the clock enable bit is set to 1.
-    /// Additionally, handles input/output with given streams before each steps.
-    ///
-    /// Returns the number of instructions executed.
+    /// Shorthand for `run_n_with_io(0, input, output)`
     pub fn run_with_io<'a>(&'a mut self, input: &mut Read, output: &mut Write) -> usize {
-        let mut steps = 0;
-
-        #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
-        let input = &mut CRLFtoLF { reader: input }; // Wrap input to replace CRLF to LF
-
-        let mut in_stream = input.bytes();
-
-        while self.mem[MCR] >> 15 > 0 {
-            if self.mem[DSR] >> 15 == 0 {}
-
-            if self.mem[KBSR] >> 15 == 0 {}
-
-            #[cfg(feature = "register-trace")]
-            let pc = self.pc;
-
-            self.step_with_hook(
-                |this, addr| {
-                    // println!("pre_load 0x{:04X}", addr);
-                    if addr == KBSR {
-                        if let Some(result) = in_stream.next() {
-                            this.mem[KBSR] |= 0b1000_0000_0000_0000;
-                            // println!("Got input: 0x{:02X}", result.as_ref().unwrap());
-                            this.mem[KBDR] = result.unwrap() as u16;
-                        }
-                    }
-                },
-                |this, addr| {
-                    // println!("post_store 0x{:04X}", addr);
-                    if addr == DDR {
-                        // println!("out: 0x{:02X}", this.mem[DDR] as u8);
-                        output.write_all(&[this.mem[DDR] as u8]).unwrap();
-                        this.mem[DSR] |= 0b1000_0000_0000_0000;
-                    }
-                },
-            );
-
-            #[cfg(feature = "register-trace")]
-            eprintln!(
-                "[DEBUG] PC=0x{:04X}, IR=0x{:04X}, POST_REG={:04X?}",
-                pc, self.ir, self.register
-            );
-            steps += 1;
-        }
-        steps
+        self.run_n_with_io(0, input, output)
     }
 
-    /// Executes next n instructions as maximum, while the clock enable bit is set to 1.
+    /// Executes next `n` instructions as maximum, while the clock enable bit is set to 1.
+    /// If `n == 0`, runs until it halts.
+    ///
     /// Additionally, handles input/output with given streams before each steps.
     ///
     /// Returns the number of instructions executed.
@@ -393,7 +349,7 @@ impl VM {
 
         let mut in_stream = input.bytes();
 
-        while self.mem[MCR] >> 15 > 0 && steps < n {
+        while self.mem[MCR] >> 15 > 0 && (n == 0 || steps < n) {
             if self.mem[DSR] >> 15 == 0 {}
 
             if self.mem[KBSR] >> 15 == 0 {}
