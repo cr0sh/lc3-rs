@@ -43,19 +43,19 @@ impl<T: Read> Read for CRLFtoLF<T> {
 #[derive(Clone)]
 pub struct VM {
     /// General purpose registers(R0~R7)
-    register: [i16; 8],
+    pub register: [i16; 8],
     /// Program Counter
-    pc: u16,
+    pub pc: u16,
     /// Instruction Register
-    ir: u16,
+    pub ir: u16,
     /// Supervisor mode
-    supervisor: bool,
+    pub supervisor: bool,
     /// Priority Level(PL0~PL7)
-    priority: u8,
+    pub priority: u8,
     /// Condition codes
-    condition: Condition,
+    pub condition: Condition,
     /// Computer memory
-    mem: [u16; 1 << 16],
+    pub mem: [u16; 1 << 16],
 }
 
 impl VM {
