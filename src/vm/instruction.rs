@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[inline]
 fn sign_extend(x: i16, b: i16) -> i16 {
@@ -179,6 +180,43 @@ impl Instruction {
     }
 }
 
+impl Display for Instruction {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            Instruction::ADD { dst, src1, src2 } => write!(f, "ADD r{}, r{}, r{}", dst, src1, src2),
+            Instruction::ADDi { dst, src, immd } => write!(f, "ADD r{}, r{}, #{}", dst, src, immd),
+            Instruction::AND { dst, src1, src2 } => write!(f, "AND r{}, r{}, r{}", dst, src1, src2),
+            Instruction::ANDi { dst, src, immd } => write!(f, "AND r{}, r{}, #{}", dst, src, immd),
+            Instruction::BR { cond, offset } => write!(
+                f,
+                "BR{}{}{} #{}",
+                if cond.n { "n" } else { "" },
+                if cond.z { "z" } else { "" },
+                if cond.p { "p" } else { "" },
+                offset
+            ),
+            Instruction::JMP { base } => write!(f, "JMP r{}", base),
+            Instruction::JSR { offset } => write!(f, "JSR #{}", offset),
+            Instruction::JSRR { base } => write!(f, "JSRR r{}", base),
+            Instruction::LD { dst, offset } => write!(f, "LD r{}, #{}", dst, offset),
+            Instruction::LDI { dst, offset } => write!(f, "LDI r{}, #{}", dst, offset),
+            Instruction::LDR { dst, base, offset } => {
+                write!(f, "LDR r{}, r{}, #{}", dst, base, offset)
+            }
+            Instruction::LEA { dst, offset } => write!(f, "LEA r{}, #{}", dst, offset),
+            Instruction::NOT { dst, src } => write!(f, "NOT r{}, r{}", dst, src),
+            Instruction::RTI => write!(f, "RTI"),
+            Instruction::ST { src, offset } => write!(f, "ST r{}, #{}", src, offset),
+            Instruction::STI { src, offset } => write!(f, "STI r{}, #{}", src, offset),
+            Instruction::STR { src, base, offset } => {
+                write!(f, "STR r{}, r{}, #{}", src, base, offset)
+            }
+            Instruction::RESERVED => write!(f, "RESERVED"),
+            Instruction::TRAP { vect } => write!(f, "TRAP x{:X}", vect),
+        }
+    }
+}
+
 impl Eq for Instruction {}
 
 #[cfg(test)]
@@ -248,4 +286,129 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_instruction_fmt() {
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::ADD {
+                    dst: 1,
+                    src1: 0,
+                    src2: 2
+                }
+            ),
+            "ADD r1, r0, r2"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::ADDi {
+                    dst: 1,
+                    src: 0,
+                    immd: -12,
+                }
+            ),
+            "ADD r1, r0, #-12"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::AND {
+                    dst: 1,
+                    src1: 0,
+                    src2: 2
+                }
+            ),
+            "AND r1, r0, r2"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::ANDi {
+                    dst: 1,
+                    src: 0,
+                    immd: -12,
+                }
+            ),
+            "AND r1, r0, #-12"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::BR {
+                    cond: Condition {
+                        n: true,
+                        z: true,
+                        p: false
+                    },
+                    offset: -231,
+                },
+            ),
+            "BRnz #-231"
+        );
+        assert_eq!(format!("{}", Instruction::JMP { base: 3 }), "JMP r3");
+        assert_eq!(format!("{}", Instruction::JSR { offset: 142 }), "JSR #142");
+        assert_eq!(format!("{}", Instruction::JSRR { base: 4 }), "JSRR r4");
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::LD {
+                    dst: 2,
+                    offset: -24
+                }
+            ),
+            "LD r2, #-24"
+        );
+        assert_eq!(
+            format!("{}", Instruction::LDI { dst: 2, offset: 32 }),
+            "LDI r2, #32"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::LDR {
+                    dst: 2,
+                    base: 3,
+                    offset: 24
+                }
+            ),
+            "LDR r2, r3, #24"
+        );
+        assert_eq!(
+            format!("{}", Instruction::LEA { dst: 3, offset: 21 }),
+            "LEA r3, #21"
+        );
+        assert_eq!(
+            format!("{}", Instruction::NOT { dst: 1, src: 0 }),
+            "NOT r1, r0"
+        );
+        assert_eq!(format!("{}", Instruction::RTI), "RTI");
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::ST {
+                    src: 2,
+                    offset: -24
+                }
+            ),
+            "ST r2, #-24"
+        );
+        assert_eq!(
+            format!("{}", Instruction::STI { src: 2, offset: 32 }),
+            "STI r2, #32"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Instruction::STR {
+                    src: 2,
+                    base: 3,
+                    offset: 24
+                }
+            ),
+            "STR r2, r3, #24"
+        );
+        assert_eq!(format!("{}", Instruction::RESERVED), "RESERVED");
+        assert_eq!(format!("{}", Instruction::TRAP { vect: 0x25 }), "TRAP x25");
+    }
 }
