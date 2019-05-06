@@ -350,10 +350,6 @@ impl VM {
         let mut in_stream = input.bytes();
 
         while self.mem[MCR] >> 15 > 0 && (n == 0 || steps < n) {
-            if self.mem[DSR] >> 15 == 0 {}
-
-            if self.mem[KBSR] >> 15 == 0 {}
-
             #[cfg(feature = "register-trace")]
             let pc = self.pc;
 
