@@ -20,11 +20,14 @@ const DEFAULT_MEM: [u16; 1 << 16] = {
 const OPERATING_SYSTEM: &'static [u8] = include_bytes!("../../static/lc3os.obj");
 
 /// A helper struct to handle windows CRLF newline incompatiability
-struct CRLFtoLF<T: Read> {
-    reader: T,
+struct CRLFtoLF<'a, T> {
+    reader: &'a mut T,
 }
 
-impl<T: Read> Read for CRLFtoLF<T> {
+impl<'a, T> Read for CRLFtoLF<'a, T>
+where
+    T: Read,
+{
     fn read(&mut self, buf: &mut [u8]) -> IOResult<usize> {
         let size = self.reader.read(buf);
         let newbuf = std::str::from_utf8(buf).unwrap().replace("\x0D", "");
@@ -331,7 +334,11 @@ impl VM {
     }
 
     /// Shorthand for `run_n_with_io(0, input, output)`
-    pub fn run_with_io<'a>(&'a mut self, input: &mut Read, output: &mut Write) -> usize {
+    pub fn run_with_io<'a, 'b, R, W>(&'a mut self, input: &'b mut R, output: &'b mut W) -> usize
+    where
+        R: Read + 'a,
+        W: Write + 'a,
+    {
         self.run_n_with_io(0, input, output)
     }
 
@@ -341,7 +348,16 @@ impl VM {
     /// Additionally, handles input/output with given streams before each steps.
     ///
     /// Returns the number of instructions executed.
-    pub fn run_n_with_io<'a>(&mut self, n: usize, input: &mut Read, output: &mut Write) -> usize {
+    pub fn run_n_with_io<'a, 'b, R, W>(
+        &mut self,
+        n: usize,
+        input: &'b mut R,
+        output: &'b mut W,
+    ) -> usize
+    where
+        R: Read + 'a,
+        W: Write + 'a,
+    {
         let mut steps = 0;
 
         #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
