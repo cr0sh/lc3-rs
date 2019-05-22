@@ -221,7 +221,7 @@ impl VM {
                 zero_if_eq!(addr, KBDR, KBSR);
             }
             Instruction::LDR { dst, base, offset } => {
-                let addr = reg!(base).wrapping_add(offset) as usize;
+                let addr = (reg!(base) as u16).wrapping_add(offset as u16) as usize;
 
                 if let Some(ref mut func) = preld {
                     func(self, addr);
@@ -259,7 +259,7 @@ impl VM {
                 }
             }
             Instruction::STR { src, base, offset } => {
-                let addr = reg!(base).wrapping_add(offset) as usize;
+                let addr = (reg!(base) as u16).wrapping_add(offset as u16) as usize;
                 self.mem[addr] = reg!(src) as u16;
                 zero_if_eq!(addr, DDR, DSR);
 
