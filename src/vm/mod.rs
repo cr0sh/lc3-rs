@@ -20,7 +20,7 @@ const DEFAULT_MEM: [u16; 1 << 16] = {
     mem
 };
 
-const OPERATING_SYSTEM: &'static [u8] = include_bytes!("../../static/lc3os.obj");
+const OPERATING_SYSTEM: &[u8] = include_bytes!("../../static/lc3os.obj");
 
 /// A helper struct to handle windows CRLF newline incompatiability
 struct CRLFtoLF<'a, T> {
@@ -82,11 +82,11 @@ impl VM {
     pub fn load_u8(&mut self, program: &[u8]) {
         let mut chunks = program.chunks(2);
         let header = chunks.next().unwrap();
-        let orig = (((header[0] as u16) << 8) + header[1] as u16).into();
+        let orig = (((u16::from(header[0])) << 8) + u16::from(header[1])).into();
         self.load_u16(
             orig,
             chunks
-                .map(|x| ((x[0] as u16) << 8) + x[1] as u16)
+                .map(|x| ((u16::from(x[0])) << 8) + u16::from(x[1]))
                 .collect::<Vec<_>>()
                 .as_ref(),
         );
@@ -115,7 +115,7 @@ impl VM {
     /// Calculates, and returns processor state register(PSR) value.
     pub fn psr(&self) -> u16 {
         ((if self.supervisor { 0 } else { 1 << 15 })
-            + ((self.priority as u16 & 0b111) << 8)
+            + ((u16::from(self.priority) & 0b111) << 8)
             + (if self.condition.n { 1 << 2 } else { 0 })
             + (if self.condition.z { 1 << 1 } else { 0 })
             + (if self.condition.p { 1 } else { 0 })) as u16
@@ -166,7 +166,7 @@ impl VM {
                 if $addr == KBSR {
                     if let Some(result) = in_stream.next() {
                         self.mem[KBSR] |= 0b1000_0000_0000_0000;
-                        self.mem[KBDR] = result.unwrap() as u16;
+                        self.mem[KBDR] = u16::from(result.unwrap());
                     }
                 }
             };
