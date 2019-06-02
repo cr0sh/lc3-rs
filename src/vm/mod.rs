@@ -1,6 +1,9 @@
 use crate::vm::instruction::{Condition, Instruction};
 use std::io::{Read, Result as IOResult, Write};
 
+#[cfg(test)]
+use std::io::{empty, sink};
+
 pub mod instruction;
 
 // These should be u16 in sense, but we define as usize for convenience.
@@ -132,11 +135,7 @@ impl VM {
     }
 
     /// Handles loaded instruction in IR
-    fn process_instruction<F, G>(&mut self, mut preld: Option<F>, mut postst: Option<G>)
-    where
-        F: FnMut(&mut Self, usize) -> (),
-        G: FnMut(&mut Self, usize) -> (),
-    {
+    fn process_instruction<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W) {
         macro_rules! reg {
             ($num:expr) => {
                 self.register[$num as usize]
@@ -156,6 +155,28 @@ impl VM {
                         self.mem[$data]
                     );
                     */
+                }
+            };
+        }
+
+        let mut in_stream = input.bytes();
+
+        macro_rules! handle_input {
+            ($addr:expr) => {
+                if $addr == KBSR {
+                    if let Some(result) = in_stream.next() {
+                        self.mem[KBSR] |= 0b1000_0000_0000_0000;
+                        self.mem[KBDR] = result.unwrap() as u16;
+                    }
+                }
+            };
+        }
+
+        macro_rules! handle_output {
+            ($addr:expr) => {
+                if $addr == DDR {
+                    output.write_all(&[self.mem[DDR] as u8]).unwrap();
+                    self.mem[DSR] |= 0b1000_0000_0000_0000;
                 }
             };
         }
@@ -200,10 +221,7 @@ impl VM {
             }
             Instruction::LD { dst, offset } => {
                 let addr = (self.pc.wrapping_add(offset as u16)) as usize;
-
-                if let Some(ref mut func) = preld {
-                    func(self, addr);
-                }
+                handle_input!(addr);
 
                 reg!(dst) = self.mem[addr] as i16;
                 self.update_condition(dst as usize);
@@ -211,10 +229,7 @@ impl VM {
             }
             Instruction::LDI { dst, offset } => {
                 let addr = self.mem[(self.pc.wrapping_add(offset as u16)) as usize] as usize;
-
-                if let Some(ref mut func) = preld {
-                    func(self, addr);
-                }
+                handle_input!(addr);
 
                 reg!(dst) = self.mem[addr] as i16;
                 self.update_condition(dst as usize);
@@ -222,10 +237,7 @@ impl VM {
             }
             Instruction::LDR { dst, base, offset } => {
                 let addr = (reg!(base) as u16).wrapping_add(offset as u16) as usize;
-
-                if let Some(ref mut func) = preld {
-                    func(self, addr);
-                }
+                handle_input!(addr);
 
                 reg!(dst) = self.mem[addr] as i16;
                 self.update_condition(dst as usize);
@@ -245,27 +257,21 @@ impl VM {
                 self.mem[addr] = reg!(src) as u16;
                 zero_if_eq!(addr, DDR, DSR);
 
-                if let Some(ref mut func) = postst {
-                    func(self, addr);
-                }
+                handle_output!(addr);
             }
             Instruction::STI { src, offset } => {
                 let addr = self.mem[(self.pc.wrapping_add(offset as u16)) as usize] as usize;
                 self.mem[addr] = reg!(src) as u16;
                 zero_if_eq!(addr, DDR, DSR);
 
-                if let Some(ref mut func) = postst {
-                    func(self, addr);
-                }
+                handle_output!(addr);
             }
             Instruction::STR { src, base, offset } => {
                 let addr = (reg!(base) as u16).wrapping_add(offset as u16) as usize;
                 self.mem[addr] = reg!(src) as u16;
                 zero_if_eq!(addr, DDR, DSR);
 
-                if let Some(ref mut func) = postst {
-                    func(self, addr);
-                }
+                handle_output!(addr);
             }
             Instruction::RESERVED => unimplemented!(),
             Instruction::TRAP { vect } => {
@@ -277,41 +283,26 @@ impl VM {
 
     /// Executes next single instruction.
     /// This function does not care about the clock enable bit.
-    pub fn step(&mut self) {
+    pub fn step<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W) {
         self.fetch();
-        self.process_instruction(None::<fn(&mut _, _)>, None::<fn(&mut _, _)>);
+        self.process_instruction(input, output);
     }
 
     /// Executes next n instructions.
     /// This function does not care about the clock enable bit.
-    pub fn step_n(&mut self, n: usize) {
+    pub fn step_n<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W, n: usize) {
         for _ in 0..n {
-            self.step();
+            self.step(input, output);
         }
-    }
-
-    /// Executes next single instruction, with given closures
-    /// passed into `process_instruction`.
-    /// This function does not care about the clock enable bit.
-    pub fn step_with_hook<F, G>(&mut self, pre_load: F, post_store: G)
-    where
-        F: FnMut(&mut Self, usize),
-        G: FnMut(&mut Self, usize),
-    {
-        self.fetch();
-        self.process_instruction(Some(pre_load), Some(post_store));
     }
 
     /// Executes as much as instructions, while the clock enable bit is set to 1.
     ///
-    /// Returns the number of instructions executed.
-    ///
-    /// Note: This function does not take care of KBSR/DSR, so the VM will run forever
-    /// if the program calls I/O subroutines.
-    pub fn run(&mut self) -> usize {
+    /// Returns number of instructions executed.
+    pub fn run<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W) -> usize {
         let mut steps = 0;
         while self.mem[MCR] >> 15 > 0 {
-            self.step();
+            self.step(input, output);
             steps += 1;
         }
         steps
@@ -321,80 +312,28 @@ impl VM {
     /// the clock enable bit is set to 1.
     ///
     /// Returns the number of instructions executed.
-    ///
-    /// Note: This function does not take care of KBSR/DSR, so the VM will run forever
-    /// if the program calls I/O subroutines.
-    pub fn run_n(&mut self, n: usize) -> usize {
-        let mut steps = 0;
-        while self.mem[MCR] >> 15 > 0 && steps < n {
-            self.step();
-            steps += 1;
-        }
-        steps
-    }
-
-    /// Shorthand for `run_n_with_io(0, input, output)`
-    pub fn run_with_io<'a, 'b, R, W>(&'a mut self, input: &'b mut R, output: &'b mut W) -> usize
-    where
-        R: Read + 'a,
-        W: Write + 'a,
-    {
-        self.run_n_with_io(0, input, output)
-    }
-
-    /// Executes next `n` instructions as maximum, while the clock enable bit is set to 1.
-    /// If `n == 0`, runs until it halts.
-    ///
-    /// Additionally, handles input/output with given streams before each steps.
-    ///
-    /// Returns the number of instructions executed.
-    pub fn run_n_with_io<'a, 'b, R, W>(
+    pub fn run_n<'a, R: Read, W: Write>(
         &mut self,
+        input: &'a mut R,
+        output: &'a mut W,
         n: usize,
-        input: &'b mut R,
-        output: &'b mut W,
-    ) -> usize
-    where
-        R: Read + 'a,
-        W: Write + 'a,
-    {
-        let mut steps = 0;
-
+    ) -> usize {
         #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
         let input = &mut CRLFtoLF { reader: input }; // Wrap input to replace CRLF to LF
 
-        let mut in_stream = input.bytes();
-
-        while self.mem[MCR] >> 15 > 0 && (n == 0 || steps < n) {
+        let mut steps = 0;
+        while self.mem[MCR] >> 15 > 0 && steps < n {
             #[cfg(feature = "register-trace")]
             let pc = self.pc;
 
-            self.step_with_hook(
-                |this, addr| {
-                    // println!("pre_load 0x{:04X}", addr);
-                    if addr == KBSR {
-                        if let Some(result) = in_stream.next() {
-                            this.mem[KBSR] |= 0b1000_0000_0000_0000;
-                            // println!("Got input: 0x{:02X}", result.as_ref().unwrap());
-                            this.mem[KBDR] = result.unwrap() as u16;
-                        }
-                    }
-                },
-                |this, addr| {
-                    // println!("post_store 0x{:04X}", addr);
-                    if addr == DDR {
-                        // println!("out: 0x{:02X}", this.mem[DDR] as u8);
-                        output.write_all(&[this.mem[DDR] as u8]).unwrap();
-                        this.mem[DSR] |= 0b1000_0000_0000_0000;
-                    }
-                },
-            );
+            self.step(input, output);
 
             #[cfg(feature = "register-trace")]
             eprintln!(
                 "[DEBUG] PC=0x{:04X}, IR=0x{:04X}, POST_REG={:04X?}",
                 pc, self.ir, self.register
             );
+
             steps += 1;
         }
         steps
@@ -438,7 +377,7 @@ fn test_step() {
     let mut vm = VM::default();
     // ADD R1, R1, #0
     vm.load_u16(0x3000, &[0x1260]);
-    vm.step();
+    vm.step(&mut empty(), &mut sink());
     assert!(vm.condition.z);
 }
 
@@ -448,7 +387,7 @@ fn test_step_n() {
     // AND R0, R0 #0
     // ADD R0, R0, #14
     vm.load_u16(0x3000, &[0x5020, 0x102E]);
-    vm.step_n(2);
+    vm.step_n(&mut empty(), &mut sink(), 2);
     assert_eq!(vm.register[0], 14);
 }
 
@@ -472,7 +411,7 @@ fn test_run() {
             0x5020, 0x5260, 0x1023, 0x0403, 0x1262, 0x103F, 0x0FFC, 0xB201, 0xF025, 0x3100,
         ],
     );
-    vm.run_with_io(&mut empty(), &mut sink());
+    vm.run(&mut empty(), &mut sink());
     assert_eq!(vm.mem[0x3100], 6);
 }
 
