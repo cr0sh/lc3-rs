@@ -1,6 +1,6 @@
 [package]
 name = "lc3-rs"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["cr0sh <ska827@snu.ac.kr>"]
 edition = "2018"
 
