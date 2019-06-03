@@ -135,7 +135,11 @@ impl VM {
     }
 
     /// Handles loaded instruction in IR
-    fn process_instruction<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W) {
+    fn process_instruction<'a, R: Read, W: Write>(
+        &mut self,
+        input: &'a mut R,
+        output: &'a mut W,
+    ) -> IOResult<()> {
         macro_rules! reg {
             ($num:expr) => {
                 self.register[$num as usize]
@@ -178,7 +182,7 @@ impl VM {
         macro_rules! handle_output {
             ($addr:expr) => {
                 if $addr == DDR {
-                    output.write_all(&[self.mem[DDR] as u8]).unwrap();
+                    output.write_all(&[self.mem[DDR] as u8])?;
                     self.mem[DSR] |= 0b1000_0000_0000_0000;
                 }
             };
@@ -254,7 +258,15 @@ impl VM {
                 reg!(dst) = !reg!(src);
                 self.update_condition(dst as usize);
             }
-            Instruction::RTI => unimplemented!(), // TODO
+            Instruction::RTI => {
+                output.write_fmt(format_args!(
+                    "*** lc3-rs notification ***
+lc3-rs does not support interrupts, but RTI instruction is being executed from address x{:04X}.
+Please check your program if this is not intended.
+*** End lc3-rs notification ***",
+                    self.pc - 1
+                ))?;
+            }
             Instruction::ST { src, offset } => {
                 let addr = (self.pc.wrapping_add(offset as u16)) as usize;
                 self.mem[addr] = reg!(src) as u16;
@@ -276,19 +288,28 @@ impl VM {
 
                 handle_output!(addr);
             }
-            Instruction::RESERVED => unimplemented!(),
+            Instruction::RESERVED => {
+                output.write_fmt(format_args!(
+                    "*** lc3-rs notification ***
+A RESERVED instruction(0b1101) is being executed from address x{:04X}.
+Please check your program if this is not intended.
+*** End lc3-rs notification ***",
+                    self.pc - 1
+                ))?;
+            }
             Instruction::TRAP { vect } => {
                 reg!(7) = self.pc as i16;
                 self.pc = self.mem[(vect as u16) as usize];
             }
         }
+        Ok(())
     }
 
     /// Executes next single instruction.
     /// This function does not care about the clock enable bit.
     pub fn step<'a, R: Read, W: Write>(&mut self, input: &'a mut R, output: &'a mut W) {
         self.fetch();
-        self.process_instruction(input, output);
+        self.process_instruction(input, output).unwrap();
     }
 
     /// Executes next n instructions.
