@@ -1,5 +1,6 @@
 use crate::vm::instruction::{Condition, Instruction};
 use std::io::{Read, Result as IOResult, Write};
+use std::path::Path;
 
 #[cfg(test)]
 use std::io::{empty, sink};
@@ -95,7 +96,7 @@ impl VM {
     /// Loads a program from given path of file.
     /// # Panics
     /// This function panics if file contents' length is not even or less than two(invalid header).
-    pub fn load_file(&mut self, path: &std::path::Path) -> std::io::Result<()> {
+    pub fn load_file<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
         let program = std::fs::read(path)?;
         self.load_u8(&program);
         Ok(())
