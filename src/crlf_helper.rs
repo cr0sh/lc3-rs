@@ -1,7 +1,7 @@
 use std::io::{Read, Result as IOResult};
 
 #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
-/// A helper struct to handle windows CRLF newline incompatiability.
+/// A helper struct to handle windows CRLF newline incompatibility.
 pub(crate) struct CRLFtoLF<'a, T> {
     pub(crate) reader: &'a mut T,
 }
