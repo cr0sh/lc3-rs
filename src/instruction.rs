@@ -175,7 +175,7 @@ impl Instruction {
             0b1111 => Instruction::TRAP {
                 vect: extract_bits!(data[7;0]),
             },
-            0b10000..=0xFFFF => unreachable!(),
+            _ => unreachable!(),
         }
     }
 }
