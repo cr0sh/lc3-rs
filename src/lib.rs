@@ -58,12 +58,14 @@ where
 }
 
 /// Trivial InstructionHandler implementation, without I/O support
-impl InstructionHandler for () {
+pub struct TrivialHandler;
+
+impl InstructionHandler for TrivialHandler {
     type Context = (Empty, Sink);
     type Err = IOError;
 
     fn create_vm(_: Self::Context) -> VM<Self> {
-        let mut vm = VM::<()> {
+        let mut vm = VM {
             state: VMState::default(),
             context: (empty(), sink()),
         };
@@ -89,7 +91,7 @@ impl InstructionHandler for () {
 ///
 /// Note: Currently interrupts are not implemented.
 #[derive(Clone)]
-pub struct VM<H>
+pub struct VM<H=TrivialHandler>
 where
     H: InstructionHandler,
 {
@@ -199,7 +201,7 @@ where
     }
 }
 
-impl Default for VM<()> {
+impl Default for VM<TrivialHandler> {
     fn default() -> Self {
         Self {
             state: Default::default(),
@@ -286,7 +288,7 @@ fn test_update_condition() {
 
 #[test]
 fn test_step() {
-    let mut vm = VM::<()>::default();
+    let mut vm = VM::default();
     // ADD R1, R1, #0
     vm.load_u16(0x3000, &[0x1260]);
     vm.step().unwrap();
@@ -295,7 +297,7 @@ fn test_step() {
 
 #[test]
 fn test_step_n() {
-    let mut vm = VM::<()>::default();
+    let mut vm = VM::default();
     // AND R0, R0 #0
     // ADD R0, R0, #14
     vm.load_u16(0x3000, &[0x5020, 0x102E]);
@@ -305,8 +307,7 @@ fn test_step_n() {
 
 #[test]
 fn test_run() {
-    use std::io::{empty, sink};
-    let mut vm = VM::<()>::new((empty(), sink()));
+    let mut vm = VM::default();
     //      AND R0, R0, #0
     //      AND R1, R1, #0
     //      ADD R0, R0, #3
@@ -333,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_load() {
-        VM::<()>::new((empty(), sink()));
+        VM::default();
         VM::default().load_u8(OPERATING_SYSTEM);
         VM::default().load_u8(&[0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF]);
         VM::default().load_u16(0x3000, &[0, 0, 0, 0]);
