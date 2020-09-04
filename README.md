@@ -1,7 +1,7 @@
 # lc3-rs
 ```
 Efficient LC-3 simulator for any platforms, written in pure Rust.
-Copyright (C) 2019 Nam Jeonghyun. (ska827@snu.ac.kr)
+Copyright (C) 2019 Nam Junghyun. (ska827@snu.ac.kr)
 ```
 
 ## Usage
