@@ -347,5 +347,4 @@ mod tests {
         VM::default().load_u8(&[0xFF, 0xFF, 0xFF, 0xFE, 0xFF]);
         VM::default().load_u16(0xFFFF, &[0, 0, 0, 0]);
     }
-
 }
