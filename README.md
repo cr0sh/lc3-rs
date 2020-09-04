@@ -18,7 +18,7 @@ If `register-trace` feature is enabled, `pc`, `ir`, `register` will be printed i
 
 If `instruction-trace` feature is enabled, contents of `ir` will be printed into stderr as a parsed `Instruction` enum _before_ the instruction is executed.
 
-Additionally, on Windows, CRLF line endings will be automatically converted into LF. If you prefer not to do this, enable `disable-crlf-compat-windows` feature when building.
+Additionally, on Windows, CRLF line endings will be automatically converted into LF. If you prefer not to do this, enable `disable-crlf-compat-windows` feature when building. On other platforms, this feature does nothing.
 
 ## License
 
