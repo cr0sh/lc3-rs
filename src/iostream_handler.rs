@@ -3,7 +3,7 @@ use std::io::{Error as IOError, Read, Result as IOResult, Write};
 use std::marker::PhantomData;
 
 #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
-use crate::crlf_helper::CRLFtoLF;
+use crate::crlf_helper::CrlfToLf;
 
 /// A standard instruction handler with Read/Write streams for input/output.
 pub struct IOStreamHandler<R: Read, W: Write> {
@@ -55,7 +55,7 @@ impl<R: Read, W: Write> InstructionHandler for IOStreamHandler<R, W> {
         let input = &mut context.0;
 
         #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
-        let input = CRLFtoLF(input); // Wrap input to replace CRLF to LF
+        let input = CrlfToLf(input); // Wrap input to replace CRLF to LF
 
         let mut in_stream = input.bytes();
 

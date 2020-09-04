@@ -3,9 +3,9 @@
 use std::io::{Read, Result as IOResult};
 
 /// A helper struct to handle windows CRLF newline incompatibility.
-pub(crate) struct CRLFtoLF<T>(pub(crate) T);
+pub(crate) struct CrlfToLf<T>(pub(crate) T);
 
-impl<T> Read for CRLFtoLF<T>
+impl<T> Read for CrlfToLf<T>
 where
     T: Read,
 {
