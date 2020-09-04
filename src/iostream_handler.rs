@@ -55,7 +55,7 @@ impl<R: Read, W: Write> InstructionHandler for IOStreamHandler<R, W> {
         let input = &mut context.0;
 
         #[cfg(all(target_os = "windows", not(feature = "disable-crlf-compat-windows")))]
-        let input = &mut CRLFtoLF { reader: input }; // Wrap input to replace CRLF to LF
+        let input = CRLFtoLF(input); // Wrap input to replace CRLF to LF
 
         let mut in_stream = input.bytes();
 
